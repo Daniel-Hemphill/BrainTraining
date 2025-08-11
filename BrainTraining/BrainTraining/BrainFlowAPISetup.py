@@ -16,6 +16,8 @@ class BrainFlowAPISetup:
         self.board = None
         self.master_board_id = None
         self.sampling_rate = None
+        self.readingCount = 0
+        self.motorState = False
 
     def setup(self):
         BoardShim.enable_board_logger()
@@ -80,10 +82,10 @@ class BrainFlowAPISetup:
         restfulness = MLModel(restfulness_params)
         restfulness.prepare()
 
-        eeg_channels = BoardShim.get_eeg_channels(int(self.master_board_id))
+        eeg_channels = [0, 1]
 
 
-        # Streaming loop 
+        # Streaming loop this is used to get the real-time data from the board
         try:
             print("Starting real-time stream. Press Ctrl+C to stop.")
             while True:
@@ -103,21 +105,46 @@ class BrainFlowAPISetup:
 
                 print(f"Avtivity: {mindful_val[0]:.4f}, Restfulness: {restful_val[0]:.4f}")
 
+                # Check if the motor should be activated based on mindfulness and restfulness values
+                if self.motorState == False:
+                    if mindful_val > 0.5:
+                        self.readingCount += 1
+                    else:
+                        self.readingCount = 0
+                        print(f"Reading Count: {self.readingCount}") # Testing Purposes Only
+
+                    if self.readingCount >= 4:
+                        self.motorState = True
+                        self.readingCount = 0
+                        return self.motorState
+                        print("Motor Activated!") # Testing Purposes Only
+                else:
+                    if restful_val > 0.5:
+                        self.readingCount += 1
+                    else:
+                        self.readingCount = 0
+                    if self.readingCount >= 4:
+                        self.motorState = False
+                        self.readingCount = 0
+                        return self.motorState
+                        print("Motor Stopped!") # Testing Purposes Only
+
+
+                
+
         except KeyboardInterrupt:
             print("Stopping streaming...")
 
         # Clean up
         mindfulness.release()
         restfulness.release()
-        self.board.stop_stream()
-        self.board.release_session()
 
     def calibrationreading(self):
         # Preparing for streaming for calibration. Current is sampleSize is 10 seconds aka 10 readings 
 
         mindfulSum = 0
         restfulSum = 0
-        sampleSize = 60
+        sampleSize = 60  # Number of samples to average over
 
         mindfulness_params = BrainFlowModelParams(BrainFlowMetrics.MINDFULNESS.value,
                                               BrainFlowClassifiers.DEFAULT_CLASSIFIER.value)
@@ -129,7 +156,7 @@ class BrainFlowAPISetup:
         restfulness = MLModel(restfulness_params)
         restfulness.prepare()
 
-        eeg_channels = BoardShim.get_eeg_channels(int(self.master_board_id))
+        eeg_channels = [0, 1]
         sampling_rate = BoardShim.get_sampling_rate(int(self.master_board_id))
 
         print("Please wait getting your averages. ")
@@ -163,5 +190,7 @@ class BrainFlowAPISetup:
         # Clean up
         mindfulness.release()
         restfulness.release()
+
+    def endsession(self):
         self.board.stop_stream()
         self.board.release_session()
