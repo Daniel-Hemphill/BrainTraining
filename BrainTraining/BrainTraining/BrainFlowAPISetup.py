@@ -69,8 +69,11 @@ class BrainFlowAPISetup:
 
 
 
-    def activereading(self):
+    def activereading(self, onChange=None):
     
+        mindfulGoal = 0.5
+        restfulGoal = 0.5
+
         # Preparing for streaming of brain mindfulness. 
         mindfulness_params = BrainFlowModelParams(BrainFlowMetrics.MINDFULNESS.value,
                                                   BrainFlowClassifiers.DEFAULT_CLASSIFIER.value)
@@ -82,7 +85,8 @@ class BrainFlowAPISetup:
         restfulness = MLModel(restfulness_params)
         restfulness.prepare()
 
-        eeg_channels = [0, 1]
+        eeg_all = BoardShim.get_eeg_channels(self.master_board_id)
+        eeg_channels = eeg_all[:2]   # use only first two EEG channels
 
 
         # Streaming loop this is used to get the real-time data from the board
@@ -99,15 +103,15 @@ class BrainFlowAPISetup:
 
                 bands = DataFilter.get_avg_band_powers(latest_data, eeg_channels, self.sampling_rate, True)
                 feature_vector = bands[0]
-
+                    
                 mindful_val = mindfulness.predict(feature_vector)
                 restful_val = restfulness.predict(feature_vector)
 
                 print(f"Avtivity: {mindful_val[0]:.4f}, Restfulness: {restful_val[0]:.4f}")
 
                 # Check if the motor should be activated based on mindfulness and restfulness values
-                if self.motorState == False:
-                    if mindful_val > 0.5:
+                if not self.motorState:
+                    if float(restful_val[0]) > mindfulGoal:
                         self.readingCount += 1
                     else:
                         self.readingCount = 0
@@ -116,17 +120,17 @@ class BrainFlowAPISetup:
                     if self.readingCount >= 4:
                         self.motorState = True
                         self.readingCount = 0
-                        return self.motorState
+                        if onChange: onChange(True)
                         print("Motor Activated!") # Testing Purposes Only
                 else:
-                    if restful_val > 0.5:
+                    if float(mindful_val[0]) > restfulGoal:
                         self.readingCount += 1
                     else:
                         self.readingCount = 0
                     if self.readingCount >= 4:
                         self.motorState = False
                         self.readingCount = 0
-                        return self.motorState
+                        if onChange: onChange(False)
                         print("Motor Stopped!") # Testing Purposes Only
 
 
@@ -156,7 +160,8 @@ class BrainFlowAPISetup:
         restfulness = MLModel(restfulness_params)
         restfulness.prepare()
 
-        eeg_channels = [0, 1]
+        eeg_all = BoardShim.get_eeg_channels(self.master_board_id)
+        eeg_channels = eeg_all[:2]   # use only first two EEG channels
         sampling_rate = BoardShim.get_sampling_rate(int(self.master_board_id))
 
         print("Please wait getting your averages. ")

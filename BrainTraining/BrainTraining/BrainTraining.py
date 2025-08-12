@@ -1,6 +1,7 @@
 import os, pathlib
 import sys
 import serial 
+import time
 from BrainFlowAPISetup import BrainFlowAPISetup
 from brainflow.board_shim import BoardShim
 
@@ -19,11 +20,15 @@ except Exception as e:
 
 
 
+
 def main():
+    comPort = 'COM6'
+    arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
+
     api = BrainFlowAPISetup()
     api.setup()
     #api.calibrationreading()
-    api.activereading()
+    api.activereading(onChange=lambda s: arduino.write(b"100" if s else b"0"))
     api.endsession()
     
 
