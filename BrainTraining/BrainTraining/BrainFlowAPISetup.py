@@ -12,12 +12,14 @@ from brainflow.ml_model import MLModel, BrainFlowMetrics, BrainFlowClassifiers, 
 
 class BrainFlowAPISetup: 
 
-    def __init__(self):
+    def __init__(self, comPort: str | None = None, mac: str | None = None):
         self.board = None
         self.master_board_id = None
         self.sampling_rate = None
         self.readingCount = 0
         self.motorState = False
+        self.guiCOM = comPort
+        self.guiMAC = mac
 
     def setup(self):
         BoardShim.enable_board_logger()
@@ -37,8 +39,8 @@ class BrainFlowAPISetup:
         parser.add_argument('--ip-protocol', type=int, help='ip protocol, check IpProtocolType enum', required=False,
                             default=0)
         parser.add_argument('--ip-address', type=str, help='ip address', required=False, default='')
-        parser.add_argument('--serial-port', type=str, help='serial port', required=False, default='COM3')
-        parser.add_argument('--mac-address', type=str, help='mac address', required=False, default='')
+        parser.add_argument('--serial-port', type=str, help='serial port', required=False, default=self.guiCOM)
+        parser.add_argument('--mac-address', type=str, help='mac address', required=False, default=self.guiMAC)
         parser.add_argument('--other-info', type=str, help='other info', required=False, default='')
         parser.add_argument('--streamer-params', type=str, help='streamer params', required=False, default='')
         parser.add_argument('--serial-number', type=str, help='serial number', required=False, default='')
@@ -111,7 +113,7 @@ class BrainFlowAPISetup:
 
                 # Check if the motor should be activated based on mindfulness and restfulness values
                 if not self.motorState:
-                    if float(restful_val[0]) > mindfulGoal:
+                    if float(restful_val[0]) > restfulGoal:
                         self.readingCount += 1
                     else:
                         self.readingCount = 0
@@ -123,7 +125,7 @@ class BrainFlowAPISetup:
                         if onChange: onChange(True)
                         print("Motor Activated!") # Testing Purposes Only
                 else:
-                    if float(mindful_val[0]) > restfulGoal:
+                    if float(mindful_val[0]) > mindfulGoal:
                         self.readingCount += 1
                     else:
                         self.readingCount = 0

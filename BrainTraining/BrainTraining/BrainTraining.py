@@ -4,6 +4,7 @@ import serial
 import time
 from BrainFlowAPISetup import BrainFlowAPISetup
 from brainflow.board_shim import BoardShim
+from BrainGUI import BrainGUI
 
 # Prime BrainFlow DLL path. I started the project in PyCharm and had some issues setting up
 # the BrainFlow DLL path correctly.This is a workaround to ensure the DLLs are found. 
@@ -22,14 +23,17 @@ except Exception as e:
 
 
 def main():
-    comPort = 'COM6'
-    arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
 
-    api = BrainFlowAPISetup()
-    api.setup()
+    # Initialize the GUI
+    gui = BrainGUI()
+    gui.startupGUI()
+
+    #comPort = 'COM6'
+    #arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
+
     #api.calibrationreading()
-    api.activereading(onChange=lambda s: arduino.write(b"100" if s else b"0"))
-    api.endsession()
+    #api.activereading(onChange=lambda s: arduino.write(b"100" if s else b"0"))
+    #api.endsession()
     
 
 if __name__ == "__main__":
