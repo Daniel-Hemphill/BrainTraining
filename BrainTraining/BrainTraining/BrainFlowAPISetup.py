@@ -144,6 +144,7 @@ class BrainFlowAPISetup:
         # Clean up
         mindfulness.release()
         restfulness.release()
+        self.board.stop_stream()
 
     def calibrationreading(self):
         # Preparing for streaming for calibration. Current is sampleSize is 10 seconds aka 10 readings 
@@ -197,7 +198,7 @@ class BrainFlowAPISetup:
         # Clean up
         mindfulness.release()
         restfulness.release()
+        self.board.stop_stream()
 
     def endsession(self):
-        self.board.stop_stream()
         self.board.release_session()

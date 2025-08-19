@@ -1,6 +1,5 @@
 import os, pathlib
-import sys
-import serial 
+import sys 
 import time
 from BrainFlowAPISetup import BrainFlowAPISetup
 from brainflow.board_shim import BoardShim
@@ -27,9 +26,6 @@ def main():
     # Initialize the GUI
     gui = BrainGUI()
     gui.startupGUI()
-
-    #comPort = 'COM6'
-    #arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
 
     #api.calibrationreading()
     #api.activereading(onChange=lambda s: arduino.write(b"100" if s else b"0"))
