@@ -3,6 +3,7 @@ from tkinter import ttk
 import dearpygui.dearpygui as dpg
 from BrainFlowAPISetup import BrainFlowAPISetup
 import serial
+import time
 
 # Text color for the GUI is #aa58fc
 # Background color for the GUI is black
@@ -10,6 +11,7 @@ import serial
 class BrainGUI:
     def __init__(self):
         self.api = BrainFlowAPISetup()
+        self.connectionLabel = None
 
     def startupGUI(self):
         # Initialize the main window 
@@ -80,6 +82,9 @@ class BrainGUI:
 
     def connectionSelected(self, event=None):
 
+        if self.connectionLabel is not None:
+            self.connectionLabel.destroy()
+
         choice = self.connectionPick.get()
         self.comPortPick = None
         self.macEntry = None
@@ -88,13 +93,13 @@ class BrainGUI:
         if choice == "Bluetooth Dongle":
             comPort = [f"COM{i}" for i in range(1, 257)]
 
-            comLabel = Label(
+            self.connectionLabel = Label(
                         self.brainStartup,
-                        text="Select COM Port      ", # Label text with spaces to hide the Enter MAC Address label that was there before...
+                        text="Select COM Port", # Label text with spaces to hide the Enter MAC Address label that was there before...
                         font=("Arial", 16),
                         bg='black',
-                        fg='white')
-            comLabel.place(x=100, y=200)
+                        fg='#aa58fc')
+            self.connectionLabel.place(x=100, y=200)
 
             self.comPortPick = ttk.Combobox(self.brainStartup, values=comPort, state="readonly", width=22)
             self.comPortPick.place(x=100, y=230)
@@ -107,20 +112,18 @@ class BrainGUI:
 
             self.comPortPick.bind("<<ComboboxSelected>>", comSelected)
 
-            def getComPort(self):
-                if hasattr(self, "comPortPick"):
-                    return self.comPortPick.get()
-                return None
+
 
         elif choice == "Native Bluetooth":
+
             # Label for MAC address
-            macLabel = Label(
+            self.connectionLabel = Label(
                             self.brainStartup,
                             text="Enter MAC Address",
                             font=("Arial", 16),
                             bg='black',
-                            fg='white')
-            macLabel.place(x=100, y=200)
+                            fg='#aa58fc')
+            self.connectionLabel.place(x=100, y=200)
 
             # Entry field for MAC
             self.macEntry = Entry(self.brainStartup, width=25)
@@ -175,8 +178,4 @@ class BrainGUI:
         # This function is used to handle the disconnect button click event.
         print("Disconnecting...") # Debugging print statement
         self.api.endsession()
-
-
-
-
-
+        self.mainScreen.destroy()

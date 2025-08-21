@@ -1,6 +1,6 @@
 import os, pathlib
 import sys 
-import time
+
 from BrainFlowAPISetup import BrainFlowAPISetup
 from brainflow.board_shim import BoardShim
 from BrainGUI import BrainGUI
