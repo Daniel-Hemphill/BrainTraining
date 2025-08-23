@@ -9,78 +9,87 @@ import time
 # Background color for the GUI is black
 
 class BrainGUI:
+
+    
+
     def __init__(self):
         self.api = BrainFlowAPISetup()
         self.connectionLabel = None
 
     def startupGUI(self):
+        # Define color constants
+        PURPLE = "#A97BFF"
+        BG = "#0B0B0C"  
+        MUTED = "#B9B9C3"
+    
         # Initialize the main window 
         self.brainStartup = Tk()
         # Set the size and title of the window
-        self.brainStartup.geometry("1280x720")
+        self.brainStartup.geometry("550x450")
         self.brainStartup.title("Brain Training")
-        # Set the icon for the window
         try:
             self.windowIcon = PhotoImage(file='Brain.png')
             self.brainStartup.iconphoto(True, self.windowIcon)
         except Exception as e:
             print("Icon load failed:", e)
-        # Set the background color of the window
-        self.brainStartup.configure(bg='black')
+        self.brainStartup.configure(bg=BG)
+
+        
+        style = ttk.Style(self.brainStartup)
+        style.theme_use("clam")
 
         # Create a label to display the welcome message
         welcome = Label(
-                        self.brainStartup, 
-                        text="Welcome to Brain Training", 
-                        font=("Arial", 24), 
-                        bg='black', 
-                        fg='#aa58fc')
-        welcome.pack(pady=20)
+            self.brainStartup, 
+            text="Welcome to\nBrain Training", 
+            font=("Arial", 26, "bold"), 
+            bg=BG, 
+            fg=PURPLE,
+            justify="center")
+        welcome.place(relx=0.5, y=36, anchor="n")
 
         ganglion = Label(
-                        self.brainStartup, 
-                        text="Ganglion connection type", 
-                        font=("Arial", 20), 
-                        bg='black', 
-                        fg='#aa58fc')
-        ganglion.place(x=100, y=120)
+            self.brainStartup, 
+            text="Ganglion Connection", 
+            font=("Arial", 16), 
+            bg=BG, 
+            fg=PURPLE)
+        ganglion.place(relx=0.25, y=160, anchor="n")
 
         arduinoConnection = Label(
-                        self.brainStartup, 
-                        text="Which COM port", 
-                        font=("Arial", 20), 
-                        bg='black', 
-                        fg='#aa58fc')
-        arduinoConnection.place(x=640, y=120)
+            self.brainStartup, 
+            text="Arduino COM Port", 
+            font=("Arial", 16), 
+            bg=BG, 
+            fg=PURPLE)
+        arduinoConnection.place(relx=0.75, y=160, anchor="n")
 
         arduinoComPort = [f"COM{i}" for i in range(1, 257)]
+        connectionType = ["Bluetooth Dongle", "Native Bluetooth"]
 
-        connectionType = [
-            "Bluetooth Dongle",
-            "Native Bluetooth"
-        ]
-
-        # Create a combobox for connection type selection
         self.connectionPick = ttk.Combobox(self.brainStartup, values=connectionType, state="readonly", width=22)
-        self.connectionPick.place(x=100, y=160)
-        self.connectionPick.set(connectionType[0])  # default selection
+        self.connectionPick.place(relx=0.25, y=188, anchor="n")
+        self.connectionPick.set(connectionType[0])  
 
-        # Create a combobox for Arduino COM port selection
         self.aComPicked = ttk.Combobox(self.brainStartup, values=arduinoComPort, state="readonly", width=22)
-        self.aComPicked.place(x=640, y=160)
-        self.aComPicked.set(arduinoComPort[0])  # default selection
+        self.aComPicked.place(relx=0.75, y=188, anchor="n")
+        self.aComPicked.set(arduinoComPort[0])  
 
         # Bind the combobox selection event to a function
         self.connectionPick.bind("<<ComboboxSelected>>", self.connectionSelected)
         self.aComPicked.bind("<<ComboboxSelected>>", lambda event: print("Arduino COM selected:", self.aComPicked.get()))
 
         self.btn = ttk.Button(self.brainStartup, text="Connect", command=self.connectClicked)
-        self.btn.place(x=640, y=360)
+        self.btn.place(relx=0.5, y=350, width=160, height=44, anchor="n")
 
         # Start the event loop
         self.brainStartup.mainloop()
 
     def connectionSelected(self, event=None):
+
+        PURPLE = "#A97BFF"
+        BG = "#0B0B0C"  
+        MUTED = "#B9B9C3"
 
         if self.connectionLabel is not None:
             self.connectionLabel.destroy()
@@ -95,14 +104,14 @@ class BrainGUI:
 
             self.connectionLabel = Label(
                         self.brainStartup,
-                        text="Select COM Port", # Label text with spaces to hide the Enter MAC Address label that was there before...
+                        text="Select COM Port",
                         font=("Arial", 16),
-                        bg='black',
-                        fg='#aa58fc')
-            self.connectionLabel.place(x=100, y=200)
+                        bg=BG,
+                        fg=PURPLE)
+            self.connectionLabel.place(relx=0.25, y=230, anchor="n")
 
             self.comPortPick = ttk.Combobox(self.brainStartup, values=comPort, state="readonly", width=22)
-            self.comPortPick.place(x=100, y=230)
+            self.comPortPick.place(relx=0.25, y=258, anchor="n")
             self.comPortPick.set("COM1")
             self.btn.config(state="normal")
 
@@ -121,13 +130,13 @@ class BrainGUI:
                             self.brainStartup,
                             text="Enter MAC Address",
                             font=("Arial", 16),
-                            bg='black',
-                            fg='#aa58fc')
-            self.connectionLabel.place(x=100, y=200)
+                            bg=BG,
+                            fg=PURPLE)
+            self.connectionLabel.place(relx=0.25, y=230, anchor="n")
 
             # Entry field for MAC
             self.macEntry = Entry(self.brainStartup, width=25)
-            self.macEntry.place(x=100, y=230)
+            self.macEntry.place(relx=0.25, y=258, anchor="n")
             self.macEntry.insert(0, "00:00:00:00:00:00")
             self.btn.config(state="normal")
 
@@ -156,6 +165,11 @@ class BrainGUI:
         self.openMainScreen()
 
     def openMainScreen(self):
+        # Define color constants
+        PURPLE = "#A97BFF"
+        BG = "#0B0B0C"  
+        MUTED = "#B9B9C3"
+
         # Open a new screen
         self.mainScreen = Tk()
         self.mainScreen.geometry("1280x720")
@@ -166,7 +180,7 @@ class BrainGUI:
             self.mainScreen,
             text="Connected! Welcome to brain training please make a selection",
             font=("Arial", 24),
-            bg="black",
+            bg=BG,
             fg="#aa58fc"
         )
         label.pack(pady=20)
