@@ -15,7 +15,7 @@ class BrainFlowAPISetup:
     def __init__(self, comPort: str | None = None, mac: str | None = None):
         self.board = None
         self.master_board_id = None
-        self.sampling_rate = None
+        self.guiSampleRate = None
         self.readingCount = 0
         self.motorState = False
         self.guiCOM = comPort
@@ -146,12 +146,12 @@ class BrainFlowAPISetup:
         restfulness.release()
         self.board.stop_stream()
 
-    def calibrationreading(self):
+    def calibrationreading(self, sampleSize):
         # Preparing for streaming for calibration. Current is sampleSize is 10 seconds aka 10 readings 
 
         mindfulSum = 0
         restfulSum = 0
-        sampleSize = 60  # Number of samples to average over
+        self.guiSampleRate = sampleSize  # Number of samples to average over
 
         mindfulness_params = BrainFlowModelParams(BrainFlowMetrics.MINDFULNESS.value,
                                               BrainFlowClassifiers.DEFAULT_CLASSIFIER.value)
@@ -169,8 +169,10 @@ class BrainFlowAPISetup:
 
         print("Please wait getting your averages. ")
 
-        for i in range(sampleSize):
-            BoardShim.log_message(LogLevels.LEVEL_INFO.value, f'Collecting sample {i+1}/{sampleSize}')
+        print(f"Sample Rate:  {self.guiSampleRate}")
+
+        for i in range(self.guiSampleRate):
+            BoardShim.log_message(LogLevels.LEVEL_INFO.value, f'Collecting sample {i+1}/{self.guiSampleRate}')
             time.sleep(1)  # wait 1 second for new data
 
             data = self.board.get_board_data()
@@ -189,8 +191,8 @@ class BrainFlowAPISetup:
             mindfulSum += mindful_val
             restfulSum += restful_val
 
-        mindful_avg = mindfulSum / sampleSize
-        restful_avg = restfulSum / sampleSize
+        mindful_avg = mindfulSum / self.guiSampleRate
+        restful_avg = restfulSum / self.guiSampleRate
 
         print(f"Mindfulness average: {mindful_avg:.4f}")
         print(f"Restfulness average: {restful_avg:.4f}")
