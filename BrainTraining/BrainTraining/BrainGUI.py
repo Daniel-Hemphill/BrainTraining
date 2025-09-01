@@ -1,11 +1,12 @@
 from ast import Lambda
 from tkinter import *
 from tkinter import ttk
-import dearpygui.dearpygui as dpg
 from BrainFlowAPISetup import BrainFlowAPISetup
 import serial
-import time
-import threading
+import threading, queue, time, math, random
+from collections import deque
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
 
 # Text color for the GUI is #aa58fc
@@ -18,6 +19,7 @@ class BrainGUI:
     def __init__(self):
         self.api = BrainFlowAPISetup()
         self.connectionLabel = None
+        self.arduino = None
 
     def startupGUI(self):
         # Define color constants
@@ -76,7 +78,8 @@ class BrainGUI:
 
         self.aComPicked = ttk.Combobox(self.brainStartup, values=arduinoComPort, state="readonly", width=22)
         self.aComPicked.place(relx=0.75, y=188, anchor="n")
-        self.aComPicked.set(arduinoComPort[0])  
+        self.aComPicked.set(arduinoComPort[0])
+        
 
         # Bind the combobox selection event to a function
         self.connectionPick.bind("<<ComboboxSelected>>", self.connectionSelected)
@@ -102,7 +105,6 @@ class BrainGUI:
 
         PURPLE = "#A97BFF"
         BG = "#0B0B0C"  
-        MUTED = "#B9B9C3"
 
         if self.connectionLabel is not None:
             self.connectionLabel.destroy()
@@ -170,8 +172,8 @@ class BrainGUI:
             self.api.setup()
 
         comPort = self.aComPicked.get()
-        print("Arduino COM Port selected:", comPort) # Debugging print statement
-        arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
+        #print("Arduino COM Port selected:", comPort) # Debugging print statement
+        self.arduino = serial.Serial(port=comPort, baudrate=9600, timeout=.1) 
 
         # Close the startup window 
         self.brainStartup.destroy()
@@ -197,26 +199,38 @@ class BrainGUI:
         )
         welcome.place(relx=0.5, y=36, anchor="n")
 
-
-        
-        self.disconnectButton = ttk.Button(self.mainScreen, 
-                                           text="Disconnect", 
-                                           command=lambda: (self.api.endsession(), self.mainScreen.destroy())
-                                           )
-        self.disconnectButton.place(x=640, y=360)
-
-        # Calibration button styling
+        # Style for buttons
         style = ttk.Style(self.mainScreen)
         style.theme_use("clam")
-        style.configure("Purple.TButton",
-        background=PURPLE,     # normal background
-        foreground="white",    # text color
-        font=("Arial", 16, "bold"),
-        padding=10
+        style.configure(
+            "Purple.TButton",
+            background=PURPLE,
+            foreground="white",
+            font=("Arial", 14, "bold"),
+            padding=10
         )
 
-        self.calibrationButton = ttk.Button(self.mainScreen, text="Calibration", command=self.calibrate)
-        self.calibrationButton.place(relx=0.25, y=160, width=200, height=44, anchor="n")
+        self.calibrationButton = ttk.Button(
+            self.mainScreen, 
+            text="Calibration",
+            style="Purple.TButton", 
+            command=self.calibrate)
+        self.calibrationButton.place(relx=0.25, rely=0.5, width=200, height=44, anchor="n")
+
+        self.calibrationButton = ttk.Button(
+            self.mainScreen, 
+            text="Training",
+            style="Purple.TButton", 
+            command=self.training)
+        self.calibrationButton.place(relx=0.75, rely=0.5, width=200, height=44, anchor="n")
+
+        self.exitButton = ttk.Button(
+            self.mainScreen,
+            text="Exit",
+            style="Purple.TButton",
+            command=lambda:(self.api.endsession(), self.mainScreen.destroy())
+        )
+        self.exitButton.place(relx=0.5, rely=0.75, width=120, height=44, anchor="n")
 
         self.mainScreen.mainloop()
 
@@ -266,7 +280,6 @@ class BrainGUI:
         self.samplePick.place(relx=0.5, y=120, anchor="n")
         self.samplePick.set(sampleRate[0])  
 
-
         # Style for buttons
         style = ttk.Style(self.calibrateScreen)
         style.theme_use("clam")
@@ -283,9 +296,9 @@ class BrainGUI:
             self.calibrateScreen,
             text="Start",
             style="Purple.TButton",
-            command=lambda: (self.startCalibration(int(self.samplePick.get())))
+            command=lambda: (self.calibrationButton.place_forget(), self.startCalibration(int(self.samplePick.get())))
         )
-        self.calibrationButton.place(relx=0.5, y=150, width=120, height=44, anchor="n")
+        self.calibrationButton.place(relx=0.5, rely=0.5, width=120, height=44, anchor="n")
 
         # Exit + Back buttons 
         self.exitButton = ttk.Button(
@@ -294,7 +307,7 @@ class BrainGUI:
             style="Purple.TButton",
             command=lambda:(self.api.endsession(), self.calibrateScreen.destroy())
         )
-        self.exitButton.place(relx=0.3, y=400, width=120, height=44, anchor="n")
+        self.exitButton.place(relx=0.3, rely=0.75, width=120, height=44, anchor="n")
 
         self.backButton = ttk.Button(
             self.calibrateScreen,
@@ -302,24 +315,160 @@ class BrainGUI:
             style="Purple.TButton",
             command=lambda: (self.calibrateScreen.destroy(), self.openMainScreen())
         )
-        self.backButton.place(relx=0.7, y=400, width=120, height=44, anchor="n")
+        self.backButton.place(relx=0.7, rely=0.75, width=120, height=44, anchor="n")
 
         self.calibrateScreen.mainloop()
+
 
     def startCalibration(self, sampleSize):
         # Define color constants
         PURPLE = "#A97BFF"
         BG = "#0B0B0C"  
 
-        pleaseWait = Label(
+        self.pleaseWait = Label(
             self.calibrateScreen, 
             text="Please wait...", 
             font=("Arial", 16),
             bg=BG,
             fg=PURPLE
         )
-        pleaseWait.place(relx=0.5, y=190, anchor="n")
+        self.pleaseWait.place(relx=0.5, rely=0.5, anchor="n")
 
-        threading.Thread(target = self.api.calibrationreading, 
-                         args=(sampleSize,), 
-                         daemon=True).start()
+        def ui_done(m, r):
+        # hop to UI thread
+            self.calibrateScreen.after(0, lambda: (
+                self.pleaseWait.config(text=f"Mindful: {m:.3f}  |  Restful: {r:.3f}"),
+                self.calibrationButton.config(state="normal")
+        ))
+
+        # Start calibration in a new thread to avoid blocking the GUI
+        threading.Thread(
+        target=self.api.calibrationreading,
+        kwargs={"sampleSize": int(self.samplePick.get()), "onResult": ui_done},
+        daemon=True
+        ).start()
+
+    def training(self):
+        print("Starting Training Screen...")
+        self.mainScreen.destroy()
+
+        # Define color constants
+        PURPLE = "#A97BFF"
+        BG = "#0B0B0C"  
+
+        # Open a new screen
+        self.trainingScreen = Tk()
+        self.trainingScreen.geometry("550x450")
+        self.trainingScreen.title("Brain Training - Training")
+        self.trainingScreen.configure(bg=BG)
+        
+        if self.api.boardActive is False:
+            self.connectClicked(self)
+        
+
+        # Title
+        welcome = Label(
+            self.trainingScreen,
+            text="Time to train.",
+            font=("Arial", 24, "bold"),
+            bg=BG,
+            fg=PURPLE
+        )
+        welcome.place(relx=0.5, y=36, anchor="n")
+
+        # Restfulness goal label
+        restfulLabel = Label(
+            self.trainingScreen, 
+            text="Set Restfulness Goal", 
+            font=("Arial", 16),
+            bg=BG,
+            fg=PURPLE
+        )
+        restfulLabel.place(relx=0.5, rely=.15, anchor="n")
+
+        # Entry field for restfulness goal
+        self.restValue = Entry(self.trainingScreen, width=10)
+        self.restValue.place(relx=0.5, rely=.23, anchor="n")
+        self.restValue.insert(0, "0.500") 
+
+        # Style for buttons
+        style = ttk.Style(self.trainingScreen)
+        style.theme_use("clam")
+        style.configure(
+            "Purple.TButton",
+            background=PURPLE,
+            foreground="white",
+            font=("Arial", 16, "bold"),
+            padding=1
+        )
+
+        # Start calibration button
+        self.start = ttk.Button(
+            self.trainingScreen,
+            text="Start",
+            style="Purple.TButton",
+            command=lambda: (self.start.place_forget(), self.startTraining())
+        )
+        self.start.place(relx=0.5, rely=.30, anchor="n")
+
+        # Exit buttons 
+        self.exitButton = ttk.Button(
+            self.trainingScreen,
+            text="Exit",
+            style="Purple.TButton",
+            command=lambda:(self.api.endsession(), self.trainingScreen.destroy(), 
+                            self.arduino.write(b"0"))
+        )
+        self.exitButton.place(relx=0.5, rely=0.75, width=120, height=44, anchor="n")
+
+
+        self.trainingScreen.mainloop()
+
+    def startTraining(self):
+        # Define color constants
+        PURPLE = "#A97BFF"
+        BG = "#0B0B0C"  
+        
+        self.restingNumber = Label(
+            self.trainingScreen,
+            text="",
+            font=("Arial", 24, "bold"),
+            bg=BG,
+            fg=PURPLE
+        )
+        self.restingNumber.place(relx=0.5, rely=0.4, anchor="n")
+
+        self.motorState = Label(
+            self.trainingScreen,
+            text="Motor: OFF",
+            font=("Arial", 24, "bold"),
+            bg=BG,
+            fg=PURPLE
+        )
+        self.motorState.place(relx=0.5, rely=0.6, anchor="n")
+
+        def ui_done(r):
+            self.trainingScreen.after(0,lambda: 
+                                      self.restingNumber.config(text=f"Restful: {float(r):.3f}"))
+
+        def startMotor(s: bool):
+            # 1) Do non-UI work directly
+           # print("Motor State:", s) # Debugging print statement
+            self.arduino.write(b"100" if s else b"0")
+
+            self.trainingScreen.after(0, lambda:
+                self.motorState.config(text=f"Motor: {'ON' if s else 'OFF'}")
+            )
+
+        # Get the restfulness goal as a float value. 
+        resfulasFloat = float(self.restValue.get())
+
+        # Start calibration in a new thread to avoid blocking the GUI
+        threading.Thread(
+            target=self.api.activereading,
+            args=(resfulasFloat,),
+            kwargs={
+                "onChange": startMotor, 
+                "onResult": ui_done},
+            daemon=True
+        ).start()

@@ -20,7 +20,7 @@ class BrainFlowAPISetup:
         self.motorState = False
         self.guiCOM = comPort
         self.guiMAC = mac
-
+        self.boardActive = None
     def setup(self):
         BoardShim.enable_board_logger()
         DataFilter.enable_data_logger()
@@ -63,7 +63,14 @@ class BrainFlowAPISetup:
         self.board  = BoardShim(args.board_id, params)
         self.master_board_id = self.board.get_board_id()
         self.sampling_rate = BoardShim.get_sampling_rate(self.master_board_id)
-        self.board.prepare_session()
+        try:
+            self.board.prepare_session()
+            self.boardActive = True
+        except :
+            self.board.release_all_sessions()
+            self.board.prepare_session()
+            self.boardActive = True
+        
         self.board.start_stream(45000, args.streamer_params)
         # End Arguments and Defenitions
         #------------------------------------------#
@@ -71,10 +78,10 @@ class BrainFlowAPISetup:
 
 
 
-    def activereading(self, onChange=None):
-    
-        mindfulGoal = 0.5
-        restfulGoal = 0.5
+    def activereading(self, guiRestingValue, onChange=None, onResult=None):
+        
+        restfulGoal = guiRestingValue
+        mindfulGoal = 1.000 - restfulGoal
 
         # Preparing for streaming of brain mindfulness. 
         mindfulness_params = BrainFlowModelParams(BrainFlowMetrics.MINDFULNESS.value,
@@ -93,10 +100,15 @@ class BrainFlowAPISetup:
 
         # Streaming loop this is used to get the real-time data from the board
         try:
-            print("Starting real-time stream. Press Ctrl+C to stop.")
             while True:
                 time.sleep(1)  # wait for 1 second of data
+                if not self.boardActive:
+                    mindfulness.release()
+                    restfulness.release()
+                    self.board.stop_stream()
+                    return
                 data = self.board.get_board_data()
+
                 if data.shape[1] < self.sampling_rate:
                     # not enough data collected yet, skip
                     continue
@@ -109,7 +121,10 @@ class BrainFlowAPISetup:
                 mindful_val = mindfulness.predict(feature_vector)
                 restful_val = restfulness.predict(feature_vector)
 
-                print(f"Avtivity: {mindful_val[0]:.4f}, Restfulness: {restful_val[0]:.4f}")
+                # print(f"Avtivity: {mindful_val[0]:.4f}, Restfulness: {restful_val[0]:.4f}") # For testing purposes
+
+                if onResult:
+                    onResult(restful_val[0])
 
                 # Check if the motor should be activated based on mindfulness and restfulness values
                 if not self.motorState:
@@ -117,13 +132,12 @@ class BrainFlowAPISetup:
                         self.readingCount += 1
                     else:
                         self.readingCount = 0
-                        print(f"Reading Count: {self.readingCount}") # Testing Purposes Only
-
-                    if self.readingCount >= 4:
+                        # print(f"Reading Count: {self.readingCount}") # Testing Purposes Only
+                    if self.readingCount >= 3:
                         self.motorState = True
                         self.readingCount = 0
                         if onChange: onChange(True)
-                        print("Motor Activated!") # Testing Purposes Only
+                        # print("Motor Activated!") # Testing Purposes Only
                 else:
                     if float(mindful_val[0]) > mindfulGoal:
                         self.readingCount += 1
@@ -133,20 +147,15 @@ class BrainFlowAPISetup:
                         self.motorState = False
                         self.readingCount = 0
                         if onChange: onChange(False)
-                        print("Motor Stopped!") # Testing Purposes Only
+                        # print("Motor Stopped!") # Testing Purposes Only
 
+        finally:
+            # Clean up
+            mindfulness.release()
+            restfulness.release()
+            self.board.stop_stream()
 
-                
-
-        except KeyboardInterrupt:
-            print("Stopping streaming...")
-
-        # Clean up
-        mindfulness.release()
-        restfulness.release()
-        self.board.stop_stream()
-
-    def calibrationreading(self, sampleSize):
+    def calibrationreading(self, sampleSize, onResult = None):
         # Preparing for streaming for calibration. Current is sampleSize is 10 seconds aka 10 readings 
 
         mindfulSum = 0
@@ -167,9 +176,9 @@ class BrainFlowAPISetup:
         eeg_channels = eeg_all[:2]   # use only first two EEG channels
         sampling_rate = BoardShim.get_sampling_rate(int(self.master_board_id))
 
-        print("Please wait getting your averages. ")
+        #print("Please wait getting your averages. ") # For testing purposes
 
-        print(f"Sample Rate:  {self.guiSampleRate}")
+        #print(f"Sample Rate:  {self.guiSampleRate}") # For testing purposes
 
         for i in range(self.guiSampleRate):
             BoardShim.log_message(LogLevels.LEVEL_INFO.value, f'Collecting sample {i+1}/{self.guiSampleRate}')
@@ -194,13 +203,19 @@ class BrainFlowAPISetup:
         mindful_avg = mindfulSum / self.guiSampleRate
         restful_avg = restfulSum / self.guiSampleRate
 
-        print(f"Mindfulness average: {mindful_avg:.4f}")
-        print(f"Restfulness average: {restful_avg:.4f}")
+        #print(f"Mindfulness average: {mindful_avg:.4f}") # For testing purposes
+        #print(f"Restfulness average: {restful_avg:.4f}") # For testing purposes
+
+        if onResult:
+            onResult(mindful_avg, restful_avg)
 
         # Clean up
         mindfulness.release()
         restfulness.release()
         self.board.stop_stream()
 
+        
+
     def endsession(self):
         self.board.release_session()
+        self.boardActive = False

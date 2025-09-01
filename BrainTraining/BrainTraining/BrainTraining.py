@@ -1,6 +1,5 @@
 import os, pathlib
 import sys 
-
 from BrainFlowAPISetup import BrainFlowAPISetup
 from brainflow.board_shim import BoardShim
 from BrainGUI import BrainGUI
@@ -23,14 +22,8 @@ except Exception as e:
 
 def main():
 
-    # Initialize the GUI
     gui = BrainGUI()
     gui.startupGUI()
-
-    #api.calibrationreading()
-    #api.activereading(onChange=lambda s: arduino.write(b"100" if s else b"0"))
-    #api.endsession()
-    
 
 if __name__ == "__main__":
     main()
