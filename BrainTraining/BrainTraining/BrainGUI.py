@@ -452,7 +452,6 @@ class BrainGUI:
                                       self.restingNumber.config(text=f"Restful: {float(r):.3f}"))
 
         def startMotor(s: bool):
-            # 1) Do non-UI work directly
            # print("Motor State:", s) # Debugging print statement
             self.arduino.write(b"100" if s else b"0")
 

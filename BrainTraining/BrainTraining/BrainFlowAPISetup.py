@@ -103,9 +103,7 @@ class BrainFlowAPISetup:
             while True:
                 time.sleep(1)  # wait for 1 second of data
                 if not self.boardActive:
-                    mindfulness.release()
-                    restfulness.release()
-                    self.board.stop_stream()
+                    self.endSession()
                     return
                 data = self.board.get_board_data()
 
@@ -212,7 +210,6 @@ class BrainFlowAPISetup:
         # Clean up
         mindfulness.release()
         restfulness.release()
-        self.board.stop_stream()
 
         
 
